@@ -1,0 +1,69 @@
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    location / {
+        return 301 https://$server_name$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name ${DOMAIN};
+
+    ssl_certificate /etc/nginx/ssl/fullchain.pem;
+    ssl_certificate_key /etc/nginx/ssl/privkey.pem;
+
+    # Add DNS resolver for Docker
+    resolver 127.0.0.11 valid=30s;
+    
+    # Media files
+    location /media/ {
+        set $upstream_api api;
+        proxy_pass http://$upstream_api:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        expires 30d;
+        add_header Cache-Control "public, no-transform";
+    }
+
+    # Thumbnail service
+    location /thumbnail/ {
+        set $upstream_api api;
+        proxy_pass http://$upstream_api:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        expires 30d;
+        add_header Cache-Control "public, no-transform";
+    }
+
+    # Dashboard application
+    location /dashboard {
+        set $upstream_dashboard dashboard;
+        proxy_pass http://$upstream_dashboard:80;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # API
+    location /graphql {
+        set $upstream_api api;
+        proxy_pass http://$upstream_api:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # Storefront
+    location / {
+        set $upstream_storefront storefront;
+        proxy_pass http://$upstream_storefront:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
